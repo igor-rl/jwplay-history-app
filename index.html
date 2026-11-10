@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baixar | JWPlay History</title>
+    <link rel="icon" href="icon.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <nav class="eb-navbar">
+        <a href="home.html" class="eb-navbar-brand">
+            <img src="icon.png" alt="">
+            JWPlay History
+        </a>
+        <div class="eb-navbar-links">
+            <a href="home.html" class="eb-navbar-link">Início</a>
+            <a href="index.html" class="eb-navbar-link active">Baixar</a>
+            <a href="privacidade.html" class="eb-navbar-link">Privacidade</a>
+        </div>
+    </nav>
+
+    <div class="page-content">
+        <div class="container">
+            <div id="loading">Procurando a versão mais recente...</div>
+
+            <div id="download-area" class="hidden">
+                <div class="eb-surface">
+                    <img src="icon.png" alt="" class="app-icon">
+                    <div><div class="os-badge" id="os-label">Detectando...</div></div>
+                    <h1>JWPlay History</h1>
+                    <p class="subtitle">v<span id="version-number">0.0.0</span> — Desktop</p>
+
+                    <a href="#" id="main-download-btn" class="eb-btn-primary">Baixar para&nbsp;<span id="btn-os">Sistema</span></a>
+                    <a href="#" id="other-download-btn" class="eb-btn-secondary hidden"></a>
+
+                    <div class="instructions-box">
+                        <span class="eb-label" id="instruction-title">Instalação</span>
+                        <div id="instruction-content" class="instruction-text"></div>
+                    </div>
+                </div>
+
+                <div class="footer-links">
+                    <a href="https://github.com/igor-rl/jwplay-history-app/releases">Encontre mais versões do app</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const REPO = "igor-rl/jwplay-history-app";
+        const MAC_CMD = "xattr -rd com.apple.quarantine '/Applications/JWPlay History.app' && open '/Applications/JWPlay History.app'";
+
+        function detectOS() {
+            const ua = (navigator.userAgent || "").toLowerCase();
+            if (ua.includes("win")) return "windows";
+            if (ua.includes("mac") && !/iphone|ipad/.test(ua)) return "macos";
+            return "unknown";
+        }
+
+        const INSTRUCTIONS = {
+            windows: "1. Execute o instalador <b>.exe</b> e siga os passos na tela.<br>" +
+                "2. Se o Windows avisar que o app não é reconhecido, clique em <b>Mais informações</b> e depois em <b>Executar assim mesmo</b>. O app não é assinado.<br>" +
+                "3. O instalador cria atalhos no Menu Iniciar e na Área de Trabalho.",
+            macos: "1. Abra o <b>.dmg</b> e arraste o app para <b>Aplicativos</b>.<br>" +
+                "2. Como o app não é assinado, o macOS irá bloqueá-lo na primeira abertura. Para liberar, copie e rode o comando abaixo no <b>Terminal</b>:" +
+                "<code onclick=\"navigator.clipboard.writeText(this.innerText); alert('Copiado!')\">" + MAC_CMD + "</code>" +
+                "Ou vá em <b>Ajustes do Sistema → Privacidade e Segurança</b> e clique em <b>\"Abrir mesmo assim\"</b>.<br>" +
+                "O app funciona em Macs Apple Silicon e Intel.",
+            unknown: "Escolha abaixo a versão para o seu sistema (Windows ou macOS)."
+        };
+
+        async function init() {
+            const $ = id => document.getElementById(id);
+            try {
+                const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
+                if (!res.ok) throw new Error("sem versão");
+                const release = await res.json();
+                const version = release.tag_name.replace(/^v/, "");
+                const assets = release.assets || [];
+                const win = assets.find(a => /setup.*\.exe$/i.test(a.name));
+                const mac = assets.find(a => /\.dmg$/i.test(a.name));
+                const os = detectOS();
+
+                $("version-number").innerText = version;
+
+                const main = os === "windows" ? win : os === "macos" ? mac : (win || mac);
+                const mainName = os === "windows" ? "Windows" : os === "macos" ? "macOS" : (win ? "Windows" : "macOS");
+                $("os-label").innerText = os === "unknown" ? "Windows e macOS" : (os === "windows" ? "Windows (x64)" : "macOS (Apple Silicon e Intel)");
+                $("btn-os").innerText = mainName;
+                if (main) $("main-download-btn").href = main.browser_download_url;
+                else { $("main-download-btn").href = release.html_url; $("btn-os").innerText = "a página da versão"; }
+
+                // Link para o outro sistema
+                const other = os === "windows" ? mac : os === "macos" ? win : (win && mac ? mac : null);
+                const otherName = os === "windows" ? "macOS" : os === "macos" ? "Windows" : "macOS";
+                if (other) {
+                    const b = $("other-download-btn");
+                    b.href = other.browser_download_url;
+                    b.innerText = "Baixar para " + otherName;
+                    b.classList.remove("hidden");
+                }
+
+                $("instruction-content").innerHTML = INSTRUCTIONS[os];
+                $("loading").classList.add("hidden");
+                $("download-area").classList.remove("hidden");
+            } catch (e) {
+                $("loading").innerHTML = 'Nenhuma versão disponível ainda. Veja a <a href="https://github.com/' + REPO + '/releases" style="color: var(--accent);">página de versões</a>.';
+            }
+        }
+        init();
+    </script>
+</body>
+</html>
